@@ -1,0 +1,13 @@
+plan_name,network_status,plan_types,referral_required,notes,last_verified
+Aetna,In-network,"Commercial, PPO, HMO",No (HMO plans may require PCP referral),Visit limits vary by employer plan,2026-09-15
+Anthem Blue Cross Blue Shield,In-network,"Commercial, PPO, HMO, ACA Marketplace",No,,2026-09-15
+CareFirst BlueCross BlueShield,In-network,"Commercial, PPO, Federal Employee Program",No,FEP plans accepted,2026-09-15
+Cigna,In-network,"Commercial, PPO, Open Access Plus",No,Prior authorization may be required after visit 12,2026-09-15
+UnitedHealthcare,In-network,"Commercial, PPO, Choice Plus",No,Optum manages PT authorizations for some UHC plans,2026-09-15
+Medicare Part B,In-network,Traditional Medicare,Physician must sign plan of care,Quillmere sends the plan of care to your physician; Medicare Advantage: see your specific plan,2026-09-15
+TRICARE East,In-network,"TRICARE Prime, TRICARE Select",Physician must sign plan of care,Active-duty Prime may need referral from military treatment facility,2026-09-15
+Workers' Compensation,Accepted with claim info,Virginia workers' comp,Claim number + adjuster contact required before first visit,Without claim number patient is scheduled as self-pay,2026-09-15
+Auto Injury (PIP / MedPay),Accepted with claim info,Auto insurance medical coverage,Claim number required,Attorney letters of protection not accepted,2026-09-15
+Virginia Medicaid / Cardinal Care,Out-of-network,Medicaid managed care,,Not accepted. Self-pay rates available. Superbill on request.,2026-09-15
+Kaiser Permanente,Out-of-network,HMO,,Not accepted. Self-pay rates available. Superbill on request.,2026-09-15
+Humana (commercial),Out-of-network,Commercial,,Not accepted. Self-pay rates available. Superbill on request.,2026-09-15

@@ -1,0 +1,422 @@
+{
+  "name": "Clinic Concierge: bookings and handoffs",
+  "nodes": [
+    {
+      "id": "2c859024-576b-54ae-8ae5-81e11be9f437",
+      "name": "Clinic events",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "306b54b0-4033-56b0-b911-a4af1080e21f",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clinic-events",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "5ee4b59e-f233-5a04-b437-43a90d53e62c",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5f448be1-635d-5161-9449-a4e50fcebc38",
+              "name": "staff_email",
+              "value": "frontdesk@example.com",
+              "type": "string"
+            },
+            {
+              "id": "63b2020f-e6ad-5a42-a1eb-2fcec38002be",
+              "name": "sheet_url",
+              "value": "https://docs.google.com/spreadsheets/d/PASTE-YOUR-SHEET-ID/edit",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      }
+    },
+    {
+      "id": "3cf84ac0-9512-5bf3-a278-f4b31aa7387f",
+      "name": "Which event?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "99c4a82f-0f51-5492-af5a-f6584689be44",
+                    "leftValue": "={{ $('Clinic events').item.json.body.event }}",
+                    "rightValue": "appointment.booked",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Booked"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b3d9b469-567a-5063-b1de-92b5c0faab06",
+                    "leftValue": "={{ $('Clinic events').item.json.body.event }}",
+                    "rightValue": "handoff.created",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Handoff"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "80d7b852-3f36-5667-9c2f-656dc29ab185",
+      "name": "Booking row",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        700,
+        120
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "173d32e6-5f4b-5a1d-a7b6-3746db6d7d3a",
+              "name": "Booked at",
+              "value": "={{ $now.setZone('America/New_York').toFormat('yyyy-MM-dd HH:mm') }}",
+              "type": "string"
+            },
+            {
+              "id": "7d256f25-f63b-5908-adc4-9c086c063308",
+              "name": "Appointment",
+              "value": "={{ $('Clinic events').item.json.body.data.when }}",
+              "type": "string"
+            },
+            {
+              "id": "e7098150-5d43-5d4f-9b18-a32aae2ff416",
+              "name": "Visit",
+              "value": "={{ $('Clinic events').item.json.body.data.visit_label }}",
+              "type": "string"
+            },
+            {
+              "id": "fbff3612-e6b4-5d80-8edf-ed0c5aaea0f2",
+              "name": "Therapist",
+              "value": "={{ $('Clinic events').item.json.body.data.provider }}",
+              "type": "string"
+            },
+            {
+              "id": "11745271-67f0-5c42-9d16-e76714fa59c8",
+              "name": "Patient",
+              "value": "={{ $('Clinic events').item.json.body.data.name }}",
+              "type": "string"
+            },
+            {
+              "id": "952b6733-c039-5555-9de0-4cdd17aafe37",
+              "name": "Phone",
+              "value": "={{ $('Clinic events').item.json.body.data.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "5902afa1-4a28-53b7-b66e-743ef4eb55c5",
+              "name": "Email",
+              "value": "={{ $('Clinic events').item.json.body.data.email || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "7db7981f-5f78-53ab-97a2-5a8eef815c38",
+              "name": "Reason",
+              "value": "={{ $('Clinic events').item.json.body.data.reason || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "e4fa1df7-5174-504f-a71f-7abe65d1d519",
+              "name": "Appointment ID",
+              "value": "={{ String($('Clinic events').item.json.body.data.appointment_id) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      }
+    },
+    {
+      "id": "670f4cda-40ed-5e5e-9692-74b5897f2257",
+      "name": "Add to Bookings sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        940,
+        120
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').item.json.sheet_url }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Bookings"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "7cc30475-77d1-5f40-bb05-9dca835d2a25",
+      "name": "Booking email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        700,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "99ab16f5-ff3a-59d2-9a7e-84ba7839c0c5",
+              "name": "to",
+              "value": "={{ $('Settings').item.json.staff_email }}",
+              "type": "string"
+            },
+            {
+              "id": "02ba9b70-3ebb-5025-97f6-289d93c8989d",
+              "name": "subject",
+              "value": "=New booking: {{ $('Clinic events').item.json.body.data.name }}, {{ $('Clinic events').item.json.body.data.when }}",
+              "type": "string"
+            },
+            {
+              "id": "f0bba716-822c-5e6b-8c5b-88d90f12382f",
+              "name": "text",
+              "value": "=A new appointment was booked through the website assistant.\n\nPatient:  {{ $('Clinic events').item.json.body.data.name }}\nPhone:    {{ $('Clinic events').item.json.body.data.phone }}\nEmail:    {{ $('Clinic events').item.json.body.data.email || 'not given' }}\nVisit:    {{ $('Clinic events').item.json.body.data.visit_label }} with {{ $('Clinic events').item.json.body.data.provider }}\nWhen:     {{ $('Clinic events').item.json.body.data.when }}\nReason:   {{ $('Clinic events').item.json.body.data.reason || 'not given' }}\n\nAppointment #{{ $('Clinic events').item.json.body.data.appointment_id }}. It's also in the Bookings sheet.\nPlease verify insurance before the visit.",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      }
+    },
+    {
+      "id": "e0a20b4c-a964-5a35-ac93-9449b7d847b2",
+      "name": "Email the front desk",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        940,
+        300
+      ],
+      "webhookId": "efe384be-1a9c-5331-b7d8-b5957214f4c8",
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "485cf221-6d67-58a4-a8c5-c7c930e2914e",
+      "name": "Handoff email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        700,
+        500
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8afd385c-a8b3-5089-b3e2-0b2226bb9503",
+              "name": "to",
+              "value": "={{ $('Settings').item.json.staff_email }}",
+              "type": "string"
+            },
+            {
+              "id": "91f6af31-007e-5fa6-bf17-2daba88a9697",
+              "name": "subject",
+              "value": "=Patient asked for a person (request #{{ $('Clinic events').item.json.body.data.handoff_id }})",
+              "type": "string"
+            },
+            {
+              "id": "3d372017-e5a5-5602-a32c-8cdd9ceb3304",
+              "name": "text",
+              "value": "=Someone on the website asked to talk to a person.\n\nName:     {{ $('Clinic events').item.json.body.data.name || 'not given' }}\nPhone:    {{ $('Clinic events').item.json.body.data.phone || 'not given: check the conversation' }}\nEmail:    {{ $('Clinic events').item.json.body.data.email || 'not given' }}\nReason:   {{ $('Clinic events').item.json.body.data.reason }}\n\nSummary:\n{{ $('Clinic events').item.json.body.data.summary }}\n\nPlease call them back today.",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      }
+    },
+    {
+      "id": "a6f0eaf9-2fff-5452-a2f9-a3c3e45ec7f5",
+      "name": "Email the front desk (handoff)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        940,
+        500
+      ],
+      "webhookId": "f97f834a-ab08-5488-a420-6362689cae68",
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Clinic events": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Which event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Which event?": {
+      "main": [
+        [
+          {
+            "node": "Booking row",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Booking email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handoff email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking row": {
+      "main": [
+        [
+          {
+            "node": "Add to Bookings sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking email": {
+      "main": [
+        [
+          {
+            "node": "Email the front desk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handoff email": {
+      "main": [
+        [
+          {
+            "node": "Email the front desk (handoff)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York"
+  },
+  "pinData": {},
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quillmere Physical Therapy</title>
+<meta name="description" content="Demo site for Clinic Concierge: an AI assistant for a fictional physical therapy clinic.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F2F5F3;
+    --ink: #0F2E26;
+    --muted: #4C635B;
+    --line: #CFDAD5;
+    --tape-blue: #2F5BEA;
+    --tape-pink: #F0607E;
+    --white: #FFFFFF;
+    --measure: 68ch;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  html, body { overflow-x: clip; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Archivo", system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.55;
+    font-variation-settings: "wdth" 100;
+  }
+  a { color: inherit; text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible { outline: 3px solid #FFB020; outline-offset: 3px; border-radius: 4px; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  /* ------------------------------------------------ top bar */
+  .top { display: flex; align-items: center; gap: 24px; padding: 20px 0; }
+  .brand { font-weight: 800; font-size: 20px; letter-spacing: -0.01em; font-variation-settings: "wdth" 112; text-decoration: none; }
+  .brand small { display: block; font-weight: 500; font-size: 13px; color: var(--muted); letter-spacing: 0; font-variation-settings: "wdth" 100; }
+  .top nav { margin-left: auto; display: flex; gap: 22px; font-size: 15px; }
+  .top nav a { text-decoration: none; color: var(--muted); }
+  .top nav a:hover { color: var(--ink); text-decoration: underline; }
+  .top .call { font-weight: 650; white-space: nowrap; text-decoration: none; }
+
+  /* ------------------------------------------------ hero with the tape */
+  .hero { position: relative; padding: 72px 0 120px; }
+  .hero h1 {
+    position: relative; z-index: 1;
+    margin: 0; max-width: 15ch;
+    font-size: clamp(44px, 7.4vw, 96px); line-height: 0.95; letter-spacing: -0.025em;
+    font-weight: 850; font-variation-settings: "wdth" 125;
+  }
+  .hero p.lede { position: relative; z-index: 1; max-width: 46ch; margin: 28px 0 0; font-size: 20px; color: var(--muted); }
+  .actions { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+  .btn {
+    display: inline-flex; align-items: center; min-height: 50px; padding: 0 24px; border-radius: 999px;
+    border: 2px solid var(--ink); background: transparent; color: var(--ink);
+    font: inherit; font-weight: 650; font-size: 16px; cursor: pointer; text-decoration: none;
+  }
+  .btn.primary { background: var(--tape-blue); border-color: var(--tape-blue); color: var(--white); }
+  .btn:hover { filter: brightness(1.06); }
+
+  /* Kinesiology tape: rounded ends, a faint woven texture, laid across the hero. */
+  .tape {
+    position: absolute; z-index: 0; height: 64px; border-radius: 32px;
+    background:
+      repeating-linear-gradient(90deg, rgba(255,255,255,.10) 0 2px, transparent 2px 7px),
+      var(--c);
+    transform-origin: left center;
+    animation: apply .9s cubic-bezier(.2,.8,.2,1) both;
+  }
+  /* Both strips start right of the text and run off the edge of the window. */
+  .tape.one { --c: var(--tape-blue); left: 56%; width: 70vw; bottom: 150px; transform: rotate(-7deg); animation-delay: .15s; }
+  .tape.two { --c: var(--tape-pink); left: 68%; width: 60vw; bottom: 44px; transform: rotate(9deg); animation-delay: .45s; opacity: .92; }
+  @keyframes apply { from { clip-path: inset(0 100% 0 0 round 32px); } to { clip-path: inset(0 0 0 0 round 32px); } }
+  @media (prefers-reduced-motion: reduce) { .tape { animation: none; } }
+
+  /* ------------------------------------------------ sections */
+  section.block { padding: 64px 0; border-top: 1px solid var(--line); }
+  .block-grid { display: grid; grid-template-columns: 280px 1fr; gap: 40px; }
+  h2 { margin: 0; font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -0.015em; font-variation-settings: "wdth" 118; }
+  .block-grid > div > p:first-child { margin-top: 0; }
+  p { max-width: var(--measure); }
+  .aside { color: var(--muted); font-size: 15px; margin-top: 12px; }
+
+  dl.services { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 40px; }
+  dl.services dt { font-weight: 700; font-size: 18px; }
+  dl.services dd { margin: 4px 0 0; color: var(--muted); }
+
+  table { border-collapse: collapse; width: 100%; max-width: 560px; }
+  th, td { text-align: left; padding: 11px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 650; width: 45%; }
+  td small { display: block; color: var(--muted); font-size: 14px; }
+
+  ul.plain { list-style: none; padding: 0; margin: 0; columns: 2; column-gap: 40px; }
+  ul.plain li { padding: 7px 0; border-bottom: 1px solid var(--line); break-inside: avoid; }
+
+  .team { list-style: none; padding: 0; margin: 0; }
+  .team li { display: grid; grid-template-columns: 260px 1fr; gap: 24px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .team b { display: block; font-size: 18px; }
+  .team span { color: var(--muted); font-size: 15px; }
+
+  .ask-line { margin-top: 20px; }
+  .ask-line button { font: inherit; color: var(--tape-blue); background: none; border: 0; padding: 0; cursor: pointer; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
+
+  footer { padding: 48px 0 120px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  footer p { max-width: 80ch; }
+
+  @media (max-width: 820px) {
+    .top nav { display: none; }
+    .top .call { margin-left: auto; }
+    .hero { padding: 40px 0 170px; }
+    .tape { height: 44px; }
+    .tape.one { left: 18%; width: 110vw; bottom: 84px; }
+    .tape.two { left: 44%; width: 90vw; bottom: 22px; }
+    .block-grid { grid-template-columns: 1fr; gap: 20px; }
+    dl.services { grid-template-columns: 1fr; }
+    ul.plain { columns: 1; }
+    .team li { grid-template-columns: 1fr; gap: 2px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#">Quillmere PT<small>Physical Therapy &amp; Sports Rehab</small></a>
+    <nav aria-label="Sections">
+      <a href="#services">Services</a>
+      <a href="#hours">Hours</a>
+      <a href="#insurance">Insurance</a>
+      <a href="#team">Team</a>
+      <a href="#visit">Visit</a>
+    </nav>
+    <a class="call" href="tel:+17035550142">(703) 555-0142</a>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <h1 id="hero-title">Physical therapy that gets you back to running, lifting and living.</h1>
+      <p class="lede">Orthopedic, sports and post-surgical rehab in Ashford Falls, Virginia. Most new patients are seen within five business days.</p>
+      <div class="actions">
+        <button class="btn primary" type="button" data-chat="I'd like to book an initial evaluation">Book an evaluation</button>
+        <button class="btn" type="button" data-chat="">Ask a question</button>
+      </div>
+      <span class="tape one" aria-hidden="true"></span>
+      <span class="tape two" aria-hidden="true"></span>
+    </section>
+
+    <section class="block" id="services" aria-labelledby="services-title">
+      <div class="block-grid">
+        <h2 id="services-title">What we treat</h2>
+        <div>
+          <dl class="services">
+            <div><dt>Orthopedic therapy</dt><dd>Back, neck, shoulder, knee, hip and ankle pain.</dd></div>
+            <div><dt>Sports injury rehab</dt><dd>From sprains to ACL recovery, with return-to-sport testing.</dd></div>
+            <div><dt>After surgery</dt><dd>ACL reconstruction, rotator cuff repair, knee and hip replacement.</dd></div>
+            <div><dt>Dizziness and concussion</dt><dd>Vestibular rehab for vertigo, balance problems and concussion.</dd></div>
+            <div><dt>Dry needling</dt><dd>Added to a visit or booked on its own.</dd></div>
+            <div><dt>Running gait analysis</dt><dd>A 75-minute session with video and a written report.</dd></div>
+          </dl>
+          <p class="aside">Not sure we can help? A free 15-minute injury screen, by phone or in person, will tell you.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="hours" aria-labelledby="hours-title">
+      <div class="block-grid">
+        <h2 id="hours-title">Hours</h2>
+        <div>
+          <table>
+            <tr><th scope="row">Monday to Thursday</th><td>7:00 AM – 7:00 PM</td></tr>
+            <tr><th scope="row">Friday</th><td>7:00 AM – 5:00 PM</td></tr>
+            <tr><th scope="row">Saturday</th><td>8:00 AM – 12:00 PM<small>Follow-up visits and sports rehab only</small></td></tr>
+            <tr><th scope="row">Sunday</th><td>Closed</td></tr>
+          </table>
+          <p class="ask-line">Holiday hours change around Thanksgiving and New Year. <button type="button" data-chat="What are your holiday hours?">Ask the assistant for this year's hours</button>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="insurance" aria-labelledby="insurance-title">
+      <div class="block-grid">
+        <h2 id="insurance-title">Insurance</h2>
+        <div>
+          <p>We're in network with:</p>
+          <ul class="plain">
+            <li>Aetna</li><li>Anthem Blue Cross Blue Shield</li><li>CareFirst BlueCross BlueShield</li>
+            <li>Cigna</li><li>UnitedHealthcare</li><li>Medicare Part B</li><li>TRICARE East</li>
+          </ul>
+          <p class="aside">We also see workers' compensation and auto injury patients. Most commercial plans don't need a referral to start.</p>
+          <p class="ask-line"><button type="button" data-chat="Do you take my insurance?">Check another plan with the assistant</button></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="team" aria-labelledby="team-title">
+      <div class="block-grid">
+        <h2 id="team-title">Our therapists</h2>
+        <ul class="team">
+          <li><b>Dr. Maya Okonkwo-Reyes</b><span>PT, DPT, OCS. Clinic director. Neck and back pain, spine, dry needling.</span></li>
+          <li><b>Dr. Daniel Hsu</b><span>PT, DPT, SCS. Sports injuries, ACL rehab, runners and gait analysis.</span></li>
+          <li><b>Dr. Priya Natarajan</b><span>PT, DPT. Dizziness, vertigo, balance and concussion.</span></li>
+          <li><b>Dr. Marcus Bell</b><span>PT, DPT. Rehab after surgery, joint replacement, fall prevention, dry needling.</span></li>
+          <li><b>Elena Vasquez</b><span>PTA. Follow-up visits as part of your therapist's plan of care.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="block" id="visit" aria-labelledby="visit-title">
+      <div class="block-grid">
+        <h2 id="visit-title">Visit us</h2>
+        <div>
+          <p>418 Cedar Mill Road, Suite 200<br>Ashford Falls, VA 20199</p>
+          <p>Free parking in the lot behind the building. The accessible entrance and elevator are on the Cedar Mill Road side.</p>
+          <p>Phone <a href="tel:+17035550142">(703) 555-0142</a> · Email <a href="mailto:frontdesk@quillmere-pt.example">frontdesk@quillmere-pt.example</a></p>
+          <p class="ask-line"><button type="button" data-chat="What should I bring to my first visit?">What to bring to your first visit</button></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>This is a demo.</strong> Quillmere Physical Therapy is a fictional clinic: the phone numbers are in the reserved 555-01xx range and the email domain doesn't exist. The chat assistant is <em>Clinic Concierge</em>, which answers from the clinic's documents with sources and books into a test calendar. Please don't enter real health information.</p>
+  </footer>
+</div>
+
+<script src="widget.js" defer data-title="Quillmere PT assistant" data-accent="#2F5BEA" data-phone="(703) 555-0142"></script>
+<script>
+  // Page buttons open the chat, optionally with a first message.
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-chat]");
+    if (b && window.ClinicConcierge) window.ClinicConcierge.open(b.getAttribute("data-chat") || undefined);
+  });
+</script>
+</body>
+</html>

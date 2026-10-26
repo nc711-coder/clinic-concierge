@@ -1,0 +1,17 @@
+{
+  "_comment": "Per-document metadata the files themselves can't tell us. Every file in data/raw must have an entry. status: current | superseded. restricted: indexed, but the assistant must not use it to give individual advice.",
+  "documents": {
+    "01_services_overview.md":               {"title": "Our Services",                         "doc_type": "web_page",   "status": "current",    "effective_date": "2026-01-01"},
+    "02_faq.html":                           {"title": "Frequently Asked Questions",           "doc_type": "faq",        "status": "current",    "effective_date": "2026-01-01"},
+    "03_fee_schedule_2026.pdf":              {"title": "Fee Schedule 2026",                    "doc_type": "pricing",    "status": "current",    "effective_date": "2026-01-01"},
+    "04_insurance_accepted.csv":             {"title": "Insurance Plans Accepted",             "doc_type": "insurance",  "status": "current",    "effective_date": "2026-09-15"},
+    "05_new_patient_intake_guide.docx":      {"title": "New Patient Guide",                    "doc_type": "guide",      "status": "current",    "effective_date": "2026-02-01"},
+    "06_cancellation_policy.html":           {"title": "Cancellation & No-Show Policy",        "doc_type": "policy",     "status": "current",    "effective_date": "2026-03-02"},
+    "07_notice_of_privacy_practices.pdf":    {"title": "Notice of Privacy Practices",          "doc_type": "policy",     "status": "current",    "effective_date": "2026-03-02"},
+    "08_financial_agreement_SCANNED.pdf":    {"title": "Patient Financial Responsibility Agreement", "doc_type": "policy", "status": "current",  "effective_date": "2026-03-01"},
+    "09_therapist_bios.md":                  {"title": "Meet Our Team",                        "doc_type": "web_page",   "status": "current",    "effective_date": "2026-01-01"},
+    "10_price_list_2025_OUTDATED.pdf":       {"title": "Self-Pay Price List 2025",             "doc_type": "pricing",    "status": "superseded", "effective_date": "2025-01-01", "superseded_by": "03_fee_schedule_2026.pdf"},
+    "11_holiday_hours_memo.txt":             {"title": "Holiday Hours 2026",                   "doc_type": "memo",       "status": "current",    "effective_date": "2026-10-13", "expires": "2027-01-02"},
+    "12_home_exercise_handout_low_back.pdf": {"title": "Home Exercise Program: Low Back",      "doc_type": "handout",    "status": "current",    "effective_date": "2026-01-01", "restricted": true}
+  }
+}

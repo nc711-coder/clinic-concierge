@@ -1,0 +1,12 @@
+# Files NOT uploaded by `gcloud run deploy --source .` (secrets first).
+.env
+.env.*
+deploy.env.yaml
+.venv/
+venv/
+**/__pycache__/
+.pytest_cache/
+.git/
+*.zip
+evals/results/
+n8n.env.yaml

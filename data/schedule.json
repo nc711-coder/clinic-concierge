@@ -1,0 +1,45 @@
+{
+  "_comment": "The clinic's providers and working hours, used to generate bookable slots (python -m app.seed). Times are local clinic time. Day names: mon tue wed thu fri sat sun. A client deployment would replace this with a sync from their real calendar or practice-management system.",
+  "timezone": "America/New_York",
+  "slot_minutes": 60,
+  "clinic_hours": {
+    "mon": ["07:00", "19:00"], "tue": ["07:00", "19:00"], "wed": ["07:00", "19:00"],
+    "thu": ["07:00", "19:00"], "fri": ["07:00", "17:00"], "sat": ["08:00", "12:00"]
+  },
+  "visit_types": {
+    "evaluation": {"label": "initial evaluation", "minutes": 60, "days": ["mon", "tue", "wed", "thu", "fri"],
+                   "needs": "can_evaluate"},
+    "follow_up":  {"label": "follow-up visit", "minutes": 45, "days": ["mon", "tue", "wed", "thu", "fri", "sat"]}
+  },
+  "closures": [
+    {"date": "2026-11-26", "note": "Thanksgiving"},
+    {"date": "2026-12-25", "note": "Christmas"},
+    {"date": "2027-01-01", "note": "New Year's Day"}
+  ],
+  "early_close": [
+    {"date": "2026-11-25", "close": "15:00"},
+    {"date": "2026-11-27", "open": "09:00", "close": "13:00"},
+    {"date": "2026-12-24", "close": "12:00"},
+    {"date": "2026-12-31", "close": "15:00"}
+  ],
+  "providers": [
+    {"id": "okonkwo-reyes", "name": "Dr. Maya Okonkwo-Reyes", "title": "PT, DPT, OCS", "can_evaluate": true,
+     "focus": "orthopedics, neck and back pain, spine, dry needling",
+     "hours": {"mon": ["08:00", "16:00"], "tue": ["08:00", "16:00"], "wed": ["08:00", "16:00"],
+               "thu": ["08:00", "16:00"], "fri": ["08:00", "16:00"]}},
+    {"id": "hsu", "name": "Dr. Daniel Hsu", "title": "PT, DPT, SCS", "can_evaluate": true,
+     "focus": "sports injuries, ACL rehab, runners, gait analysis",
+     "hours": {"tue": ["14:00", "19:00"], "thu": ["14:00", "19:00"], "sat": ["08:00", "12:00"]}},
+    {"id": "natarajan", "name": "Dr. Priya Natarajan", "title": "PT, DPT", "can_evaluate": true,
+     "focus": "dizziness, vertigo, balance, concussion",
+     "hours": {"mon": ["08:00", "16:00"], "wed": ["08:00", "16:00"], "fri": ["08:00", "16:00"]}},
+    {"id": "bell", "name": "Dr. Marcus Bell", "title": "PT, DPT", "can_evaluate": true,
+     "focus": "post-surgical rehab, joint replacement, older adults, fall prevention, dry needling",
+     "hours": {"mon": ["09:00", "17:00"], "tue": ["09:00", "17:00"], "wed": ["09:00", "17:00"],
+               "thu": ["09:00", "17:00"]}},
+    {"id": "vasquez", "name": "Elena Vasquez", "title": "PTA", "can_evaluate": false,
+     "focus": "follow-up visits under a PT's plan of care",
+     "hours": {"mon": ["10:00", "18:00"], "tue": ["10:00", "18:00"], "wed": ["10:00", "18:00"],
+               "thu": ["10:00", "18:00"], "fri": ["09:00", "15:00"], "sat": ["08:00", "12:00"]}}
+  ]
+}

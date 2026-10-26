@@ -1,0 +1,5 @@
+# Keep line endings consistent, and never touch the sample PDFs (a changed byte breaks them).
+* text=auto
+*.pdf binary
+*.png binary
+*.jpg binary

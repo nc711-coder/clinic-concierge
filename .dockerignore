@@ -1,0 +1,16 @@
+# Keep secrets, local environments and anything the server doesn't need out of the image.
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+**/__pycache__/
+.pytest_cache/
+.git/
+tests/
+evals/
+automation/
+data/raw/
+*.zip
+deploy.env.yaml
+n8n.env.yaml
