@@ -40,10 +40,12 @@ nodes = [
     setnode("Settings", [220, 300], {
         "staff_email": "frontdesk@example.com",                                   # <- change to your email
         "sheet_url": "https://docs.google.com/spreadsheets/d/PASTE-YOUR-SHEET-ID/edit",   # <- your Google Sheet
+        "alert_email": "you@example.com",           # <- who hears when the assistant fails (you, not the front desk)
     }),
     {"id": uid("switch"), "name": "Which event?", "type": "n8n-nodes-base.switch", "typeVersion": 3.2,
      "position": [440, 300],
-     "parameters": {"rules": {"values": [rule("Booked", "appointment.booked"), rule("Handoff", "handoff.created")]},
+     "parameters": {"rules": {"values": [rule("Booked", "appointment.booked"), rule("Handoff", "handoff.created"),
+                                        rule("Alert", "assistant.error")]},
                     "options": {}}},
     setnode("Booking row", [700, 120], {
         "Booked at": "={{ $now.setZone('America/New_York').toFormat('yyyy-MM-dd HH:mm') }}",
@@ -90,6 +92,22 @@ nodes = [
                  "Please call them back today."),
     }),
     gmail("Email the front desk (handoff)", [940, 500]),
+    setnode("Alert email", [700, 700], {
+        "to": "={{ " + SETTING + ".alert_email }}",
+        "subject": f"=Clinic assistant failed: {{{{ {D}.headline }}}}",
+        "text": ("=A visitor got \"The assistant isn't available right now\" (or a similar error) instead of an answer.\n\n"
+                 f"What happened:  {{{{ {D}.headline }}}}\n"
+                 f"When:           {{{{ {D}.when }}}}\n"
+                 f"Likely fix:     {{{{ {D}.fix }}}}\n\n"
+                 f"Visitor's message:  {{{{ {D}.visitor_message || '(none)' }}}}\n"
+                 f"Model:              {{{{ {D}.model || 'unknown' }}}}\n"
+                 f"Server version:     {{{{ {D}.version }}}} ({{{{ {D}.where }}}})\n"
+                 f"{{{{ {D}.similar_failures_not_emailed ? 'Also ' + {D}.similar_failures_not_emailed + ' similar failure(s) since the last email (sent at most once every 30 minutes).\\n' : '' }}}}\n"
+                 f"Error:\n{{{{ {D}.error }}}}\n\n"
+                 f"Where in the code:\n{{{{ {D}.traceback || '(no traceback)' }}}}\n\n"
+                 f"Full server log (PowerShell):\n{{{{ {D}.logs_command }}}}"),
+    }),
+    gmail("Email the owner (alert)", [940, 700]),
 ]
 
 def link(*targets): return [[{"node": t, "type": "main", "index": 0} for t in targets]]
@@ -98,10 +116,12 @@ connections = {
     "Settings": {"main": link("Which event?")},
     "Which event?": {"main": [[{"node": "Booking row", "type": "main", "index": 0},
                                {"node": "Booking email", "type": "main", "index": 0}],
-                              [{"node": "Handoff email", "type": "main", "index": 0}]]},
+                              [{"node": "Handoff email", "type": "main", "index": 0}],
+                              [{"node": "Alert email", "type": "main", "index": 0}]]},
     "Booking row": {"main": link("Add to Bookings sheet")},
     "Booking email": {"main": link("Email the front desk")},
     "Handoff email": {"main": link("Email the front desk (handoff)")},
+    "Alert email": {"main": link("Email the owner (alert)")},
 }
 workflow = {"name": "Clinic Concierge: bookings and handoffs", "nodes": nodes, "connections": connections,
             "settings": {"executionOrder": "v1", "timezone": "America/New_York"}, "pinData": {}, "active": False,

@@ -46,7 +46,7 @@
   function load() { try { return localStorage.getItem(STORE_KEY); } catch (e) { return null; } }
   function save(v) { try { v ? localStorage.setItem(STORE_KEY, v) : localStorage.removeItem(STORE_KEY); } catch (e) {} }
 
-  // Reply text -> DOM: keeps line breaks, turns "[2]" into a small citation marker. Never uses innerHTML,
+  // Reply text -> DOM: keeps line breaks, turns "[2]" into a small clickable citation marker. Never uses innerHTML,
   // so nothing the model writes can run as code on the page.
   // Some models write **bold**: shown as bold, still built from text nodes (never HTML).
   function renderText(text, target) {
@@ -57,7 +57,9 @@
         var into = bold ? target.appendChild(el("strong")) : target;
         (bold ? bold[1] : chunk).split(/(\[\d+\])/).forEach(function (part) {
           var m = part.match(/^\[(\d+)\]$/);
-          into.appendChild(m ? el("sup", { class: "cite", text: m[1] }) : document.createTextNode(part));
+          into.appendChild(m ? el("sup", {}, [el("button", { type: "button", class: "cite", "data-n": m[1],
+                                                          "aria-label": "Show source " + m[1], text: m[1] })])
+                             : document.createTextNode(part));
         });
       });
     });
@@ -92,10 +94,23 @@
     ".bot{align-self:flex-start;background:var(--bg);border:1px solid var(--line);border-bottom-left-radius:4px}",
     ".me{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}",
     ".err{align-self:flex-start;background:#FFF4E5;border:1px solid #F3C98B}",
-    ".cite{font-size:11px;font-weight:700;color:var(--accent);margin-left:1px}",
-    ".sources{margin:8px 0 0;padding:8px 0 0;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);list-style:none}",
-    ".sources li{margin:2px 0}",
-    ".sources b{color:var(--accent);margin-right:4px}",
+    ".cite{border:0;background:none;padding:0 2px;margin-left:1px;font:inherit;font-size:11px;font-weight:700;",
+    "  color:var(--accent);cursor:pointer;border-radius:4px}",
+    ".cite:hover{background:var(--soft);text-decoration:underline}",
+    ".sources{margin:8px 0 0;padding:6px 0 0;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);list-style:none}",
+    ".src{display:flex;align-items:baseline;gap:5px;width:100%;border:0;background:none;padding:4px 0;margin:0;",
+    "  font:inherit;color:inherit;text-align:left;cursor:pointer}",
+    ".src:hover .t{color:var(--ink);text-decoration:underline}",
+    ".src b{color:var(--accent);flex:none}",
+    ".src .t{flex:1}",
+    ".src .chev{flex:none;transition:transform .15s}",
+    ".src[aria-expanded=true] .chev{transform:rotate(180deg)}",
+    ".excerpt{margin:2px 0 8px;padding:8px 10px;background:var(--soft);border-left:3px solid var(--accent);",
+    "  border-radius:6px;color:var(--ink);white-space:pre-line;max-height:220px;overflow-y:auto}",
+    ".excerpt[hidden]{display:none}",
+    ".excerpt a{display:inline-block;margin-top:6px;color:var(--accent);font-weight:600}",
+    ".flash{animation:flash 1s ease-out}",
+    "@keyframes flash{from{background:#FFF1C2}to{background:var(--soft)}}",
     ".booked{margin-top:8px;padding:10px 12px;border-radius:10px;background:#E6F4EA;border:1px solid #A8D5B5;font-size:13.5px}",
     ".note{margin-top:6px;font-size:12.5px;color:var(--muted)}",
     ".chips{display:flex;flex-wrap:wrap;gap:6px;align-self:flex-start;max-width:100%}",
@@ -188,15 +203,7 @@
 
   function showReply(r) {
     var b = bubble("bot", r.reply);
-    if (r.citations && r.citations.length) {
-      var list = el("ul", { class: "sources", "aria-label": "Sources" });
-      r.citations.forEach(function (c) {
-        var li = el("li", {}, [el("b", { text: String(c.n) })]);
-        li.appendChild(document.createTextNode(c.title + (c.section ? " — " + c.section : "")));
-        list.appendChild(li);
-      });
-      b.appendChild(list);
-    }
+    if (r.citations && r.citations.length) b.appendChild(sourceList(r.citations, b));
     if (r.appointment) {
       b.appendChild(el("div", { class: "booked", text: "Booked: " + r.appointment.when + " with " +
                                 r.appointment.provider + ". Confirmation #" + r.appointment.appointment_id + "." }));
@@ -211,6 +218,47 @@
       if (opts.length) chips(opts, ask);
     }
     log.scrollTop = log.scrollHeight;                     // show the sources / booking card too
+  }
+
+  // Sources under an answer: click one (or a [n] marker in the text) to see the passage the answer came from,
+  // with a link to the whole document.
+  function sourceList(citations, bubbleEl) {
+    var list = el("ul", { class: "sources", "aria-label": "Sources" });
+    var toggles = {};
+    citations.forEach(function (c) {
+      var id = "src-" + Math.random().toString(36).slice(2);
+      var box = el("div", { class: "excerpt", id: id, hidden: "" });
+      if (c.excerpt) box.appendChild(document.createTextNode("“" + c.excerpt + "”"));
+      if (c.url) {
+        box.appendChild(document.createElement("br"));
+        box.appendChild(el("a", { href: cfg.api + c.url, target: "_blank", rel: "noopener",
+                                  text: "Open the full document ↗" }));
+      }
+      var btn = el("button", { type: "button", class: "src", "aria-expanded": "false", "aria-controls": id }, [
+        el("b", { text: String(c.n) }),
+        el("span", { class: "t", text: c.title + (c.section ? " — " + c.section : "") }),
+        el("span", { class: "chev", "aria-hidden": "true", text: "▾" }),
+      ]);
+      function toggle(show) {
+        show = show === undefined ? box.hidden : show;
+        box.hidden = !show;
+        btn.setAttribute("aria-expanded", String(show));
+        return box;
+      }
+      btn.addEventListener("click", function () { toggle(); });
+      toggles[c.n] = toggle;
+      list.appendChild(el("li", {}, [btn, box]));
+    });
+    bubbleEl.addEventListener("click", function (e) {      // [n] markers in the answer open that source
+      var cite = e.target.closest && e.target.closest(".cite");
+      if (!cite || !toggles[cite.dataset.n]) return;
+      var box = toggles[cite.dataset.n](true);
+      box.classList.remove("flash");
+      void box.offsetWidth;                                // restart the highlight
+      box.classList.add("flash");
+      box.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+    return list;
   }
 
   function typing() {
@@ -239,8 +287,10 @@
       .then(function (res) {
         return res.json().catch(function () { return {}; }).then(function (body) {
           if (!res.ok) {
-            var err = new Error(typeof body.detail === "string" ? body.detail : "HTTP " + res.status);
-            err.friendly = res.status === 429 || res.status === 503;   // limits / model busy: already plain English
+            var err = new Error(typeof body.detail === "string" ? body.detail
+              : res.status >= 500 ? "Something went wrong on our side. Please try again in a few minutes."
+              : "HTTP " + res.status);
+            err.friendly = res.status === 429 || res.status >= 500;    // limits / model busy / our error: plain English
             throw err;
           }
           return body;

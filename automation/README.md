@@ -4,12 +4,14 @@ When the assistant books an appointment or a patient asks for a person, the app 
 
 - **Booking:** adds a row to a Google Sheet and emails the front desk.
 - **Handoff:** emails the front desk the patient's details and a summary of the conversation, so someone can call back.
+- **Failure alert:** when a visitor gets an error instead of an answer, emails you (`alert_email`) what broke and how to fix it.
 
 ```
 app (booking.notify)  --POST + X-Webhook-Secret-->  n8n webhook  -->  Which event?
                                                                       ├─ Booked  -> Booking row -> Google Sheet
                                                                       │           -> Booking email -> Gmail
-                                                                      └─ Handoff -> Handoff email -> Gmail
+                                                                      ├─ Handoff -> Handoff email -> Gmail
+                                                                      └─ Alert   -> Alert email   -> Gmail (to you)
 ```
 
 Files in this folder:
@@ -82,16 +84,17 @@ n8n on your PC needs its own "app" registered with Google before it can send Gma
 ## Part 5: Import and connect the workflow
 
 1. In n8n, open **Overview**, then use the **⋯** menu or **Create** to **Import from file**, and choose `automation/n8n_clinic_events.json`.
-2. **Settings** step: double-click it and change the two values:
-   - `staff_email`: the address that should get the emails (yours, for the demo).
+2. **Settings** step: double-click it and change the three values:
+   - `staff_email`: the address that should get the booking and handoff emails (yours, for the demo).
    - `sheet_url`: the sheet address from Part 3.
+   - `alert_email`: who hears when the assistant fails (you, the developer, not the front desk).
 3. **Add to Bookings sheet** step: double-click it, then under **Credential** choose **Create new credential** (Google Sheets OAuth2 API).
    - Paste the **Client ID** and **Client Secret** from Part 4. The OAuth Redirect URL shown there should match the one you entered in Google.
    - Click **Sign in with Google** and choose your account.
    - Google warns **"Google hasn't verified this app"**. That's expected for your own test app: click **Continue** and allow access.
    - Click **Save**.
 4. **Email the front desk** step: do the same, creating a **Gmail OAuth2** credential with the same Client ID and Secret.
-5. **Email the front desk (handoff)** step: choose the Gmail credential you just made. There's no need to create it again.
+5. **Email the front desk (handoff)** and **Email the owner (alert)** steps: choose the Gmail credential you just made. There's no need to create it again.
 6. **Clinic events** step (the webhook): under **Credential for Header Auth**, choose **Create new credential**:
    - **Name:** `X-Webhook-Secret`
    - **Value:** a long random string. To make one, run this in PowerShell and copy the output:

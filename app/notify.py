@@ -2,6 +2,7 @@
 
     python -m app.notify              # a sample "appointment.booked"
     python -m app.notify handoff      # a sample "handoff.created"
+    python -m app.notify error        # a sample "assistant.error" (the email you get when the chat fails)
 """
 from __future__ import annotations
 
@@ -20,7 +21,16 @@ SAMPLES = {
         "handoff_id": 0, "session_id": None, "lead_id": 0, "reason": "asked for a person",
         "summary": "TEST EVENT: patient wants to talk about a bill.", "name": "Test Patient",
         "phone": "(703) 555-0199", "email": None}),
+    "error": ("assistant.error", None),          # built in sample_error(), from the real alert code
 }
+
+
+def sample_error() -> dict:
+    from app.alerts import Alerter, explain
+    from app.llm import LLMError
+    e = LLMError("TEST EVENT: Groq took too long to answer (ReadTimeout: The read operation timed out).")
+    kind, headline, fix = explain(e)
+    return Alerter.payload(e, kind, headline, fix, "do you take aetna?", "/chat", 2, "openai/gpt-oss-120b")
 
 
 def main(argv=None) -> int:
@@ -35,6 +45,7 @@ def main(argv=None) -> int:
         print("EVENT_WEBHOOK_URL is not set in .env, so there's nowhere to send the event.")
         return 2
     event, data = SAMPLES[which[0]]
+    data = data if data is not None else sample_error()
     print(f"Sending {event} to {url} ...")
     status = notify(event, data, wait=True)
     if status is None:

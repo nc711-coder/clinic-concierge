@@ -16,12 +16,14 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-# Only what the server needs at runtime (no source documents, tests or evals).
+# Only what the server needs at runtime (no tests or evals). The clinic documents are served when a
+# patient clicks a citation (app/sources.py decides which ones may be shown).
 COPY ingest/ ingest/
 COPY app/ app/
 COPY sql/ sql/
 COPY web/ web/
-COPY data/schedule.json data/schedule.json
+COPY data/schedule.json data/manifest.json data/
+COPY data/raw/ data/raw/
 
 # Bake the embedding + reranking models into the image.
 RUN python -m app.warm

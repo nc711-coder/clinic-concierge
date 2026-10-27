@@ -21,6 +21,7 @@ from ingest.retrieve import retrieve
 from . import timing
 
 from .guardrails import SAFE_REPLY, check_answer, check_negative_claims, check_question, split_sentences
+from .sources import excerpt, source_url
 
 CLINIC_NAME = os.environ.get("CLINIC_NAME", "Quillmere Physical Therapy & Sports Rehab")
 CLINIC_PHONE = os.environ.get("CLINIC_PHONE", "(703) 555-0142")
@@ -234,6 +235,8 @@ class ChatEngine:
         citations = [{"n": n, "source": rows[n - 1]["metadata"].get("source"),
                       "title": rows[n - 1]["metadata"].get("title"),
                       "section": rows[n - 1]["metadata"].get("section"),
+                      "excerpt": excerpt(rows[n - 1]["content"]),
+                      "url": source_url(rows[n - 1]["metadata"]),
                       "inferred": inferred} for n in used]
         return ChatResult(text, answered=bool(citations) and not declined, search_query=query,
                           citations=citations, retrieved=self._retrieved(rows), guardrail=note)

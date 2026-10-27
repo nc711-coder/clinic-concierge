@@ -91,3 +91,98 @@ def test_model_errors_are_plain_for_visitors(monkeypatch):
                                                   "Please try again in a minute, or call the clinic. [Rate limit]"))
     with TestClient(main.app) as c:
         assert c.post("/chat", json={"message": "hi"}).json()["detail"].endswith("or call the clinic.")
+
+
+# --------------------------------------------------------------------------- clickable citations
+
+def test_citation_carries_excerpt_and_link_only_for_public_documents():
+    from app.sources import excerpt, path_for, source_url
+    assert source_url({"source": "03_fee_schedule_2026.pdf", "page_start": 2}) == "/sources/03_fee_schedule_2026.pdf#page=2"
+    assert source_url({"source": "02_faq.html", "page_start": None}) == "/sources/02_faq.html"
+    assert source_url({"source": "10_price_list_2025_OUTDATED.pdf"}) is None          # superseded
+    assert source_url({"source": "12_home_exercise_handout_low_back.pdf"}) is None    # restricted
+    assert path_for("../.env") is None and path_for("manifest.json") is None
+    long = "word " * 400
+    assert len(excerpt(long)) <= 701 and excerpt(long).endswith("…") and excerpt("short  text") == "short text"
+
+
+def test_source_documents_are_served_safely(monkeypatch):
+    with client(monkeypatch) as c:
+        r = c.get("/sources/03_fee_schedule_2026.pdf")
+        assert r.status_code == 200 and r.headers["content-type"] == "application/pdf" and r.content[:4] == b"%PDF"
+        assert r.headers["content-disposition"].startswith("inline")
+        html = c.get("/sources/02_faq.html")
+        assert html.status_code == 200 and html.headers["content-security-policy"] == "sandbox"
+        assert c.get("/sources/12_home_exercise_handout_low_back.pdf").status_code == 404
+        assert c.get("/sources/10_price_list_2025_OUTDATED.pdf").status_code == 404
+        assert c.get("/sources/..%2F..%2F.env").status_code == 404
+
+
+def test_widget_makes_citations_clickable(monkeypatch):
+    with client(monkeypatch) as c:
+        js = c.get("/widget.js").text
+        assert "Open the full document" in js and 'class: "cite"' in js and "aria-expanded" in js
+
+
+# --------------------------------------------------------------------------- failure alerts
+
+def test_alert_explains_the_failure_and_is_throttled():
+    from app.alerts import Alerter, explain
+    from app.llm import LLMError
+    assert explain(LLMError("Groq rejected the API key. Check GROQ_API_KEY in .env."))[0] == "api_key"
+    assert explain(LLMError("Groq took too long to answer (ReadTimeout)"))[0] == "timeout"
+    assert explain(LLMError("The assistant is busy right now (Groq usage limit reached)."))[0] == "rate_limit"
+    assert explain(RuntimeError("boom"))[0] == "bug"
+
+    class PgError(Exception):
+        pass
+    PgError.__module__ = "psycopg.errors"
+    assert explain(PgError("connection refused"))[0] == "database"
+
+    sent, now = [], [0.0]
+    a = Alerter(every_minutes=30, clock=lambda: now[0], send=lambda ev, data: sent.append((ev, data)))
+    timeout = LLMError("Groq took too long to answer (ReadTimeout)")
+    assert a.report(timeout, "do you take aetna?", model="openai/gpt-oss-120b")
+    assert not a.report(timeout, "hello") and not a.report(timeout, "hello")      # same kind, within 30 min
+    assert a.report(RuntimeError("boom"), "hi")                                     # a different kind still goes
+    now[0] += 31 * 60
+    assert a.report(timeout, "again")
+    event, data = sent[0]
+    assert event == "assistant.error" and data["kind"] == "timeout" and data["visitor_message"] == "do you take aetna?"
+    assert "groqstatus" in data["fix"] and data["model"] == "openai/gpt-oss-120b" and "logs read" in data["logs_command"]
+    assert sent[2][1]["similar_failures_not_emailed"] == 2
+
+
+def test_failures_email_the_owner_and_stay_plain_for_visitors(monkeypatch):
+    from app.alerts import Alerter
+    from app.llm import LLMError
+    sent = []
+    monkeypatch.setattr(main, "alerter", Alerter(send=lambda ev, data: sent.append(data)))
+
+    class Broken(Fake):
+        def __init__(self, exc):
+            self.exc = exc
+
+        def handle(self, message, session_id=None):
+            raise self.exc
+
+    monkeypatch.setattr(main, "concierge", Broken(LLMError("Groq rejected the API key. Check GROQ_API_KEY in .env.")))
+    with TestClient(main.app) as c:
+        r = c.post("/chat", json={"message": "what are your hours?"})
+        assert r.status_code == 503 and "GROQ_API_KEY" not in r.text
+    monkeypatch.setattr(main, "concierge", Broken(KeyError("slot_id")))
+    with TestClient(main.app, raise_server_exceptions=False) as c:
+        r = c.post("/chat", json={"message": "book me"})
+        assert r.status_code == 500 and "Something went wrong on our side" in r.json()["detail"]
+        assert "slot_id" not in r.text
+    assert [d["kind"] for d in sent] == ["api_key", "bug"]
+    assert sent[0]["visitor_message"] == "what are your hours?" and "KeyError" in sent[1]["error"]
+
+
+def test_workflow_has_an_alert_branch():
+    import json
+    from pathlib import Path
+    wf = json.loads((Path(__file__).resolve().parent.parent / "automation" / "n8n_clinic_events.json").read_text())
+    names = {n["name"] for n in wf["nodes"]}
+    assert {"Alert email", "Email the owner (alert)"} <= names
+    assert len(wf["connections"]["Which event?"]["main"]) == 3

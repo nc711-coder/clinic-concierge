@@ -10,7 +10,6 @@ venv/
 tests/
 evals/
 automation/
-data/raw/
 *.zip
 deploy.env.yaml
 n8n.env.yaml

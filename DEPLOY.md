@@ -195,6 +195,8 @@ Remove-Item Env:EVENT_WEBHOOK_URL
 ```
 Then book through the live site: the email and the sheet row should arrive within about a minute (longer if n8n was asleep).
 
+**Failure alerts.** The same workflow emails `alert_email` (Settings step) when a visitor gets an error instead of an answer: what broke, the likely fix, and the log command. Test it with `python -m app.notify error`. `ALERT_EVERY_MINUTES` (default 30) limits it to one email per kind of problem in that window.
+
 **Notes**
 - **Cost:** with the CPU always on, n8n is billed for as long as it's awake. It wakes for a booking or for the editor and goes back to sleep after about 15 minutes of no requests, so each wake-up costs roughly 2 cents. That billing mode's free tier (240,000 vCPU-seconds and 450,000 GiB-seconds a month) covers about 250 wake-ups. **Close the n8n tab when you're done:** an open editor keeps it awake.
 - **Google's 7-day sign-out:** the OAuth app is in "Testing", so Google signs you out of the cloud n8n after 7 days, as it does locally. Open the credential and click **Sign in with Google** again. Publishing the OAuth app removes the limit, but Google may ask you to verify it.

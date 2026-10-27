@@ -11,6 +11,9 @@ POST /ask    {"message": "do you take kaiser?", "history": [...]}  -> questions 
 GET  /health -> {"status": "ok", "model": "llama3.1:8b"}
 GET  /            the demo clinic website (web/index.html) with the chat widget
 GET  /widget.js   the widget, for embedding on any site: <script src="https://HOST/widget.js" defer></script>
+GET  /sources/<file>  a clinic document a citation points to (only current, public ones: app/sources.py)
+
+When a visitor gets an error instead of an answer, the owner is emailed why (app/alerts.py, through n8n).
 """
 from __future__ import annotations
 
@@ -24,12 +27,15 @@ from dataclasses import asdict
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from ingest.env import load_dotenv
 
+from . import sources
+from .alerts import alerter
 from .llm import LLMError
 
 load_dotenv()
@@ -131,6 +137,18 @@ def model_unavailable(e: LLMError) -> HTTPException:
                                                  "few minutes.")
 
 
+def failed(e: Exception, message: str, where: str) -> HTTPException:
+    """Any error a visitor sees: log it, email the owner why (at most once per kind every 30 minutes), and
+    return a plain message. Unexpected errors (a bug, the database down) no longer show "Internal Server Error"."""
+    model = getattr(getattr(getattr(concierge, "engine", None), "llm", None), "model", "") or ""
+    alerter.report(e, message, where, model=str(model))
+    if isinstance(e, LLMError):
+        return model_unavailable(e)
+    log.exception("%s failed", where)
+    return HTTPException(status_code=500, detail="Something went wrong on our side. Please try again in a few "
+                                                 "minutes.")
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "model": getattr(concierge.engine.llm, "model", None)}
@@ -143,8 +161,8 @@ def chat(req: ChatRequest, request: Request):
         raise HTTPException(status_code=429, detail=blocked)
     try:
         result = concierge.handle(req.message, req.session_id)
-    except LLMError as e:
-        raise model_unavailable(e)
+    except Exception as e:
+        raise failed(e, req.message, "/chat")
     out = asdict(result)
     if not req.debug:
         out.pop("debug")
@@ -158,12 +176,24 @@ def ask(req: AskRequest, request: Request):
         raise HTTPException(status_code=429, detail=blocked)
     try:
         result = concierge.engine.answer(req.message, [m.model_dump() for m in req.history])
-    except LLMError as e:
-        raise model_unavailable(e)
+    except Exception as e:
+        raise failed(e, req.message, "/ask")
     out = asdict(result)
     if not req.debug:
         out.pop("retrieved")
     return out
+
+
+@app.get("/sources/{name}")
+def source_document(name: str):
+    path = sources.path_for(name)
+    if not path:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    media = sources.MEDIA_TYPES[path.suffix.lower()]
+    # inline: open in the browser tab rather than download (Word files still download).
+    # sandbox: a document page can't run scripts on this site's address.
+    return FileResponse(path, media_type=media, content_disposition_type="inline", filename=path.name,
+                        headers={"Content-Security-Policy": "sandbox", "X-Content-Type-Options": "nosniff"})
 
 
 # Last, so the API routes above win: everything else is a file from web/ ("/" -> index.html).

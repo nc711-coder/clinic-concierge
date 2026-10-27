@@ -173,7 +173,8 @@ The widget is one file, `web/widget.js`, with no framework and no build step. An
 
 - **Shadow DOM:** the host site's CSS can't break the widget, and the widget's CSS can't leak onto the host site.
 - **Conversation memory:** the session id is kept in the browser, so a reload continues the conversation. "Start over" clears it.
-- **Booking buttons:** sources are listed under each answer, offered times become buttons (they send "1", "2"…), and the confirmation step gets Yes / No buttons.
+- **Checkable answers:** sources are listed under each answer. Clicking one, or a [1] marker in the text, shows the exact passage the answer came from and links to the original document (`/sources/<file>`; only current, public documents are served, never the outdated price list or the restricted exercise handout).
+- **Booking buttons:** offered times become buttons (they send "1", "2"…), and the confirmation step gets Yes / No buttons.
 - **Safe rendering:** replies are inserted as text, never as HTML, so nothing a model writes can run as code on the page.
 - **Opening from page buttons:** the page's own buttons can open the chat with `ClinicConcierge.open("I'd like to book an evaluation")`.
 - **Accessibility:** Enter sends, Shift+Enter adds a new line, Esc closes. The chat goes full screen on phones and respects reduced motion.
@@ -188,7 +189,8 @@ Each booking and handoff is sent to an n8n webhook. n8n adds the booking to a Go
 - The workflow is in `automation/n8n_clinic_events.json`, and `automation/README.md` has step-by-step setup for Windows (Node.js, n8n, Google sign-in).
 - **Shared secret:** requests carry an `X-Webhook-Secret` header (`EVENT_WEBHOOK_SECRET`), and n8n rejects anything without it.
 - **Doesn't slow the patient down:** events go out in a background thread with 3 retries, so a slow or offline n8n never delays or breaks a booking.
-- **Easy to test:** `python -m app.notify` sends a sample booking (and `python -m app.notify handoff` a sample handoff) without touching the calendar.
+- **Failure alerts:** when a visitor gets an error instead of an answer, the owner gets an email saying what broke in plain words (API key rejected, model retired, provider stalled, database paused, or a bug), the likely fix, the visitor's message, where in the code it failed and the command for the server log. At most one email per kind of problem every 30 minutes (`ALERT_EVERY_MINUTES`), with a count of the failures in between. Visitors still see a plain message.
+- **Easy to test:** `python -m app.notify` sends a sample booking (`handoff` a sample handoff, `error` a sample alert) without touching the calendar.
 - **Runs in the cloud too:** the live demo's n8n is a second Cloud Run service with its data in Supabase. It sleeps when idle and wakes for each event; the webhook replies only after the email and sheet row are done (DEPLOY.md, Part 8).
 - **Tested end to end:** the workflow was run in n8n 2.35 with test events. Correct secret → sheet row and both emails formatted; wrong or missing secret → HTTP 403.
 
@@ -262,7 +264,8 @@ data/manifest.json   per-document metadata (status, dates, restricted)
 data/fact_sheet.md   ground truth for evals (not ingested)
 ingest/              parsers.py, chunker.py, embed.py, store.py, rerank.py, retrieve.py, pipeline.py
 app/                 chat.py (rewrite → retrieve → answer), guardrails.py, llm.py (Ollama/OpenAI/Claude + tool calling),
-                     router.py, agent.py, tools.py, booking.py, sessions.py, concierge.py, seed.py, main.py (API)
+                     router.py, agent.py, tools.py, booking.py, sessions.py, concierge.py, seed.py, main.py (API),
+                     sources.py (citation passages and document links), alerts.py (failure emails)
 data/schedule.json   therapists, hours, holidays, visit-type rules for the booking calendar
 sql/001_schema.sql   documents + chunks tables, HNSW and full-text indexes
 sql/002_booking.sql  providers, slots, leads, appointments, handoffs, sessions, messages, tool_calls

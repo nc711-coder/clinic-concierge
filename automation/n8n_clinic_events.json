@@ -42,6 +42,12 @@
               "name": "sheet_url",
               "value": "https://docs.google.com/spreadsheets/d/PASTE-YOUR-SHEET-ID/edit",
               "type": "string"
+            },
+            {
+              "id": "78464567-2ba1-5c34-8fb3-82bedc93d406",
+              "name": "alert_email",
+              "value": "you@example.com",
+              "type": "string"
             }
           ]
         },
@@ -108,6 +114,30 @@
               },
               "renameOutput": true,
               "outputKey": "Handoff"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d6a4bdff-a48f-5594-894b-4b294afacc4b",
+                    "leftValue": "={{ $('Clinic events').item.json.body.event }}",
+                    "rightValue": "assistant.error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Alert"
             }
           ]
         },
@@ -328,6 +358,62 @@
           "appendAttribution": false
         }
       }
+    },
+    {
+      "id": "612fd5b3-016e-55e5-8e89-5f0d86ce6517",
+      "name": "Alert email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        700,
+        700
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b3e5f700-4ebd-518a-95ac-37aabff24800",
+              "name": "to",
+              "value": "={{ $('Settings').item.json.alert_email }}",
+              "type": "string"
+            },
+            {
+              "id": "04362ccc-5f2f-52e0-984f-9921363b8a0c",
+              "name": "subject",
+              "value": "=Clinic assistant failed: {{ $('Clinic events').item.json.body.data.headline }}",
+              "type": "string"
+            },
+            {
+              "id": "80f665d7-261f-5fd6-a452-df67efbb3507",
+              "name": "text",
+              "value": "=A visitor got \"The assistant isn't available right now\" (or a similar error) instead of an answer.\n\nWhat happened:  {{ $('Clinic events').item.json.body.data.headline }}\nWhen:           {{ $('Clinic events').item.json.body.data.when }}\nLikely fix:     {{ $('Clinic events').item.json.body.data.fix }}\n\nVisitor's message:  {{ $('Clinic events').item.json.body.data.visitor_message || '(none)' }}\nModel:              {{ $('Clinic events').item.json.body.data.model || 'unknown' }}\nServer version:     {{ $('Clinic events').item.json.body.data.version }} ({{ $('Clinic events').item.json.body.data.where }})\n{{ $('Clinic events').item.json.body.data.similar_failures_not_emailed ? 'Also ' + $('Clinic events').item.json.body.data.similar_failures_not_emailed + ' similar failure(s) since the last email (sent at most once every 30 minutes).\\n' : '' }}\nError:\n{{ $('Clinic events').item.json.body.data.error }}\n\nWhere in the code:\n{{ $('Clinic events').item.json.body.data.traceback || '(no traceback)' }}\n\nFull server log (PowerShell):\n{{ $('Clinic events').item.json.body.data.logs_command }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      }
+    },
+    {
+      "id": "c9811423-05ce-5bd7-af13-073fcce8e25e",
+      "name": "Email the owner (alert)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        940,
+        700
+      ],
+      "webhookId": "5e0e0e33-75a3-5408-9f6f-571b4f068233",
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      }
     }
   ],
   "connections": {
@@ -373,6 +459,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Alert email",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -403,6 +496,17 @@
         [
           {
             "node": "Email the front desk (handoff)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert email": {
+      "main": [
+        [
+          {
+            "node": "Email the owner (alert)",
             "type": "main",
             "index": 0
           }
