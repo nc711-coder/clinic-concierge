@@ -111,8 +111,10 @@ def test_full_booking_conversation(conn):
     c = concierge(conn, llm)
 
     r1 = c.handle("I'd like to book an evaluation, mornings are best")
-    assert r1.route == "booking" and "What's your name" in r1.reply
+    # The model asked for name and phone before a time was picked: the code shows the times instead.
+    assert r1.route == "booking" and "name" not in r1.reply and "Which one works best?" in r1.reply
     offered = r1.debug["tool_calls"][0]["result"]["slots"]
+    assert all(f"{i}. {s['when']}" in r1.reply for i, s in enumerate(offered, 1))
     assert offered and all("AM" in s["when"] for s in offered)
 
     r2 = c.handle("The first one. Jane Doe, 703-555-0199", r1.session_id)
@@ -313,7 +315,7 @@ def test_real_transcript_model_saves_lead_but_forgets_to_book(conn):
     first = r1.debug["tool_calls"][0]["result"]["slots"][0]
     r2 = c.handle("the first one, Jane Doe 703-555-0199", r1.session_id)
     assert r2.awaiting_confirmation and first["when"] in r2.reply
-    assert [t["name"] for t in r2.debug["tool_calls"]] == ["save_lead", "book_appointment"]
+    assert [t["name"] for t in r2.debug["tool_calls"]] == ["book_appointment"]    # contact was saved in code
     assert r2.debug["tool_calls"][-1]["by"] == "code"
     assert c.handle("yes", r2.session_id).appointment["when"] == first["when"]
 
@@ -548,3 +550,40 @@ def test_debug_shows_where_the_time_went(conn):
     steps = [t["step"] for t in r.debug["timings"]]
     assert steps == ["model: booking agent, round 1", "tool: check_availability", "model: booking agent, round 2"]
     assert r.debug["total_seconds"] >= sum(t["seconds"] for t in r.debug["timings"])
+
+
+# --------------------------------------------------------------------------- name and phone only after a time is picked
+
+def test_no_preference_shows_times_without_asking_for_contact(conn):
+    """Real transcript (gpt-oss-120b): "not really" to "any preferred day?" got "Could I get your full name and a
+    phone number so we can find the best slots?". Now the code lists the next open times."""
+    c = concierge(conn, ScriptedLLM(say("Do you have a preferred day or time of day?")))
+    r1 = c.handle("id like to book an appointment Ive never been there")
+    r2 = c.handle("not really", r1.session_id)
+    assert "1. " in r2.reply and "name" not in r2.reply.lower() and len(c.agent.llm.calls) == 1
+
+
+def test_model_asking_for_contact_early_is_replaced_with_times(conn):
+    c = concierge(conn, ScriptedLLM(say("Sure! Could I get your full name and a phone number so we can find the best slots?")))
+    r = c.handle("I'm a new patient, can I book something thursday?")
+    assert "1. " in r.reply and ("Which one" in r.reply or "Would one of these" in r.reply)
+    assert r.debug["replaced"].startswith("Sure! Could I get")
+
+
+def test_contact_given_early_is_never_asked_for_again(conn):
+    """Real transcript: "john doe 465 354 6981", then "3 pm works best" got "what's your full name and phone?"."""
+    llm = ScriptedLLM(call("check_availability", visit_type="evaluation"),
+                      lambda m: LLMReply("Which works? " + listing(last_tool_result(m)["slots"])))
+    c = concierge(conn, llm)
+    r1 = c.handle("I'm a new patient, book me in. john doe 465 354 6981")
+    slots = r1.debug["tool_calls"][-1]["result"]["slots"]
+    r2 = c.handle("the first one works best and yeah thats my phone number", r1.session_id)
+    assert r2.awaiting_confirmation and slots[0]["when"] in r2.reply and "John Doe" in r2.reply
+
+
+def test_no_preference_wording():
+    from app.router import no_preference
+    assert all(no_preference(m) for m in ["not really", "no preference", "any time works", "whenever", "nope",
+                                          "the earliest one please", "anything is fine", "doesn't matter"])
+    assert not any(no_preference(m) for m in ["no, can we do another day instead", "no, thursday afternoon",
+                                              "not really, mornings are better", "no I'm new"])

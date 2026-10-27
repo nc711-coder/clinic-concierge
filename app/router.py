@@ -108,6 +108,21 @@ def says_no_times(reply: str) -> bool:
     return bool(_NO_TIMES.search(reply or ""))
 
 
+_NO_PREFERENCE = re.compile(r"""
+    ^\s*(not\s+really|no(\s+(real\s+)?preference)?|nope|nah|none|any(\s*time|\s+day|\s+time|thing)?|
+          whenever|whatever|either|flexible|i'?m\s+flexible|(it\s+)?doesn'?t\s+matter|i\s+don'?t\s+(care|mind)|
+          (the\s+)?(earliest|soonest|first\s+available|next\s+available)(\s+(one|time|slot))?|asap|as\s+soon\s+as\s+possible)
+    ([\s,]+(really|works|is\s+fine|is\s+good|works\s+for\s+me|please|thanks|thank\s+you|i'?m\s+flexible))*[\s.!]*$
+""", re.I | re.X)
+_WHEN_WORDS = re.compile(r"\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\b|\b(morning|afternoon|evening|today|tomorrow|"
+                         r"week|weekend|am|pm|noon|\d{1,2}(:\d\d)?)\b", re.I)
+
+
+def no_preference(message: str) -> bool:
+    """'not really', 'any time', 'whenever', 'the earliest' in reply to "any preferred day or time?"."""
+    return bool(_NO_PREFERENCE.match(message)) and not _WHEN_WORDS.search(message) and len(message.split()) <= 8
+
+
 def frustrated(message: str) -> bool:
     return bool(_FRUSTRATED.search(message))
 

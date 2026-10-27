@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import re
 import threading
 import time
 from dataclasses import dataclass, field
@@ -16,7 +17,7 @@ from dataclasses import dataclass, field
 from . import booking, sessions, timing
 from .agent import BookingAgent
 from .router import (about_existing_appointment, been_before_reply, confirmation_reply, declines_callback,
-                     frustrated, just_yes, route, says_no_times, visit_type_hint)
+                     frustrated, just_yes, no_preference, route, says_no_times, visit_type_hint)
 from .tools import (ToolContext, confirmation_message, next_open, parse_contact, pick_offered_slot,
                     remember_offered, run_tool, shown_order)
 
@@ -94,6 +95,18 @@ class Concierge:
             return which
         if frustrated(message) and ctx.state.get("visit_type"):
             return self._offer_next(ctx, "Sorry about that, let me make it easier.", apologise=True)
+        # Name and phone are read in code the moment they're given, so they're never asked for twice
+        # (the model sometimes asked for them early and then forgot it had them).
+        captured = self._capture_contact(message, ctx)
+        if isinstance(captured, TurnResult):
+            return captured
+        if ctx.state.get("visit_type") and not ctx.state.get("shown_offered"):
+            label = self.schedule.visit_types[ctx.state["visit_type"]]["label"]
+            if no_preference(message):              # "not really" to "any preferred day?": show the earliest
+                return self._offer_next(ctx, f"No problem! Here are the next available {label} times:")
+            if captured and _only_contact(message):
+                first = ctx.state["contact"]["name"].split(" ")[0]
+                return self._offer_next(ctx, f"Thanks, {first}! Here are the next available {label} times:")
         # The patient picked one of the times just offered and we already have their name and phone:
         # no need to ask the model, go straight to "Shall I book it?".
         shown_before = ctx.state.get("shown_offered")     # the list the patient was looking at
@@ -104,6 +117,9 @@ class Concierge:
         turn = self.agent.run(ctx, history, message, run_db=self.db)
         new_search = any(c["name"] == "check_availability" for c in turn.tool_calls)
         self._remember_shown(turn, ctx.state)
+        early = self._asked_contact_too_early(turn, ctx)
+        if early:
+            return early
         if turn.handoff_id:
             ctx.state["mode"] = None
         elif not turn.awaiting_confirmation and says_no_times(turn.text):
@@ -165,6 +181,41 @@ class Concierge:
             lead += f" The next available {label} times are:"
         tail = "Would one of these work? Or say \"call me\" and the front desk will phone you."
         return TurnResult("", f"{lead}\n{options}\n{tail}", "booking")
+
+    def _capture_contact(self, message, ctx):
+        """Save name + phone from a message like "John Doe 703 555 0199" if we don't have them yet.
+        Returns True if saved, a TurnResult if the number was incomplete, else None."""
+        if (ctx.state.get("contact") or {}).get("phone"):
+            return None
+        name, phone, email = parse_contact(message)
+        if not (name and phone):
+            return None
+        saved = self.db(lambda: run_tool("save_lead", {"name": name, "phone": phone, "email": email}, ctx))
+        if "error" in saved:
+            return TurnResult("", "That phone number doesn't look complete. Could you send your full name and a "
+                                  "10-digit phone number?", "booking")
+        return True
+
+    def _asked_contact_too_early(self, turn, ctx) -> TurnResult | None:
+        """Name and phone are only asked for once the patient has picked a time. If the model asks for them
+        before that, the code shows times instead: the ones the model just found, or the next open ones."""
+        state = ctx.state
+        if any(c["name"] in ("save_lead", "book_appointment") for c in turn.tool_calls):
+            return None                              # they're giving details already (e.g. fixing a phone number)
+        if (turn.awaiting_confirmation or turn.handoff_id or turn.guardrail or state.get("chosen_slot")
+                or (state.get("contact") or {}).get("phone") or not state.get("visit_type")
+                or not _ASKS_CONTACT.search(turn.text or "")):
+            return None
+        label = self.schedule.visit_types[state["visit_type"]]["label"]
+        found = state.get("last_offered") if any(c["name"] == "check_availability" for c in turn.tool_calls) else None
+        if not found:
+            offer = self._offer_next(ctx, f"Here are the next available {label} times:")
+        else:
+            state["shown_offered"] = list(found)
+            options = "\n".join(f"{i}. {s['when']} with {s['provider']}" for i, s in enumerate(found, 1))
+            offer = TurnResult("", f"Here are the open {label} times:\n{options}\nWhich one works best?", "booking")
+        offer.debug = {"tool_calls": turn.tool_calls, "replaced": turn.text}
+        return offer
 
     def _which_one(self, message, state) -> TurnResult | None:
         """A bare "yes" to a list of times doesn't pick one: ask which, instead of letting the model search again."""
@@ -301,3 +352,19 @@ class Concierge:
                               "handoff")
         ctx.state.pop("handoff_pending")              # asked twice: treat this as a new message
         return None
+
+
+_ASKS_CONTACT = re.compile(r"\b(your|full)\s+(full\s+)?(name|phone|number|contact)|"
+                                         r"\bname\s+and\s+(a\s+|the\s+best\s+)?(phone|number)", re.I)
+
+
+def _only_contact(message: str) -> bool:
+    """The message is just a name and phone (and maybe email), with nothing else the agent should read."""
+    from .tools import _EMAIL, _PHONE
+    rest = _EMAIL.sub(" ", _PHONE.sub(" ", message))
+    name, _, _ = parse_contact(message)
+    if name:
+        rest = re.sub(r"\s+".join(map(re.escape, name.split())), " ", rest, flags=re.I)
+    rest = re.sub(r"\b(my|name|is|i'?m|im|phone|number|cell|and|it'?s|here|you\s+go|thanks|thank\s+you)\b", " ",
+                  rest, flags=re.I)
+    return len(re.findall(r"[a-z]+", rest, re.I)) <= 1

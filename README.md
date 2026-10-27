@@ -149,6 +149,8 @@ patient message ─▶ router ─┬─ question ─────▶ RAG pipeline
   - "You're booked" is replaced if nothing was booked, and medical advice is replaced too. The tool loop is capped at 5 rounds.
   - If a local model writes a tool call as JSON text instead of a real call, it's still executed.
   - New or returning is settled by code before any search: if the message doesn't say, the code asks "Have you been to Quillmere before?" (yes = follow-up, no = initial evaluation), and the tools use that visit type whatever the model passes.
+  - Name and phone are asked for only after the patient picks a time. If the model asks earlier, the code shows times instead; "no preference" gets the next open times straight away; and a name and phone given at any point are saved in code, so they're never asked for twice.
+  - If the model writes a tool call the provider can't parse (Groq's `tool_use_failed`), the request is retried, then the fallback model tries.
   - Picking a time is done in code when it's unambiguous ("the second one", "Thursday at 10"). Ordinals count the times in the order the reply showed them, which isn't always the order the tool returned.
 - **Tool calling works with all three providers.** Ollama, OpenAI and Claude each convert to and from one shared message format (`app/llm.py`).
 - **Memory.** Sessions, messages, booking state, leads, appointments, handoffs and every tool call are stored in Postgres (`sql/002_booking.sql`). A pending booking survives a server restart.

@@ -39,6 +39,11 @@ KNOWN = [
      "keeps happening, compare models with `python -m app.llmcheck`."),
     ("server error", "provider_down", "The AI provider had a server error",
      "Usually a short outage on the provider's side. Check https://groqstatus.com; nothing to change in the app."),
+    ("broken tool calls", "tool_call", "The AI model kept writing invalid tool calls",
+     "The model's request to a booking tool was malformed three times in a row (main model, retry, fallback). "
+     "Usually random. If it repeats, test the model with `python -m app.llmcheck` or switch GROQ_MODEL."),
+    ("rejected the request", "bad_request", "The AI provider rejected the request",
+     "The error below says what it didn't accept. If a model setting changed, test with `python -m app.llmcheck`."),
     ("connection", "network", "The server couldn't reach the AI provider",
      "A network problem between Cloud Run and the provider. Usually temporary; check https://groqstatus.com."),
     ("can't reach", "network", "The server couldn't reach the AI provider",

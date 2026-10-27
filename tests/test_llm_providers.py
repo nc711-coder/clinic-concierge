@@ -391,3 +391,30 @@ def test_non_breaking_hyphens_are_normalised():
     from app.llm import clean_text
     assert clean_text("out‑of‑network, call (703) 555‑0142") == "out-of-network, call (703) 555-0142"
     assert clean_text("Monday–Thursday") == "Monday–Thursday"          # en dash in ranges is left alone
+
+
+def test_broken_tool_call_is_retried(monkeypatch):
+    """Groq answers 400 'tool_use_failed' when gpt-oss writes a tool call it can't parse. It's random: retry."""
+    import httpx
+
+    from app.llm import GroqLLM
+    monkeypatch.delenv("GROQ_FALLBACK_MODEL", raising=False)
+    broken = httpx.Response(400, json={"error": {"message": "Failed to call a function. Please adjust your prompt.",
+                                                 "type": "invalid_request_error", "code": "tool_use_failed"}})
+    asked = []
+
+    def handler(req):
+        asked.append(_json.loads(req.content)["model"])
+        return broken if len(asked) == 1 else _completion({"role": "assistant", "content": "Here are some times."})
+    assert _compat(GroqLLM, handler).chat_tools([{"role": "user", "content": "thursday?"}], TOOLS).text == \
+        "Here are some times."
+    assert asked == ["openai/gpt-oss-120b", "openai/gpt-oss-120b"]
+
+    asked.clear()
+    with pytest.raises(LLMError, match="broken tool calls"):
+        _compat(GroqLLM, lambda req: asked.append(1) or broken).chat_tools([{"role": "user", "content": "x"}], TOOLS)
+    assert len(asked) == 3                                           # first try, retry, fallback model
+
+    other = httpx.Response(400, json={"error": {"message": "max_tokens too large", "code": "invalid"}})
+    with pytest.raises(LLMError, match="rejected the request"):
+        _compat(GroqLLM, lambda req: other).chat_tools([{"role": "user", "content": "x"}], TOOLS)

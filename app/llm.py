@@ -81,6 +81,11 @@ class OllamaLLM:
 
 # --------------------------------------------------------------------------- OpenAI
 
+def _broken_tool_call(e) -> bool:
+    text = f"{getattr(e, 'code', '')} {getattr(e, 'message', '')} {getattr(e, 'body', '')}".lower()
+    return "tool_use_failed" in text or "failed to call a function" in text or "tool call validation" in text
+
+
 def _root_cause(e: BaseException) -> str:
     """The innermost error behind a connection failure (DNS, SSL certificate, refused, IPv6...), which is what
     tells you how to fix it."""
@@ -176,6 +181,24 @@ class OpenAILLM:
                 return self.client.chat.completions.create(**{**kwargs, "model": fallback})
             except Exception as e2:
                 raise self._friendly(e2) from e2
+        except openai.BadRequestError as e:
+            if not _broken_tool_call(e):
+                raise self._friendly(e) from e
+            # The model wrote a tool call the provider couldn't parse (Groq: "tool_use_failed"). It's random,
+            # so the same request usually works the second time; then the fallback model gets a go.
+            log.warning("%s %s wrote a broken tool call; retrying", self.NAME, self.model)
+            timing.note(f"{self.model} wrote a broken tool call, retried")
+            for model in [self.model] + ([self.fallback_model] if self.fallback_model else []):
+                try:
+                    return self.client.chat.completions.create(**{**kwargs, "model": model})
+                except openai.BadRequestError as e2:
+                    if not _broken_tool_call(e2):
+                        raise self._friendly(e2) from e2
+                    e = e2
+                except Exception as e2:
+                    raise self._friendly(e2) from e2
+            raise LLMError(f"{self.NAME} kept writing broken tool calls ({str(e.message)[:200]}). Usually random; "
+                           f"if it keeps happening, try another model with `python -m app.llmcheck`.") from e
         except Exception as e:
             raise self._friendly(e) from e
 
