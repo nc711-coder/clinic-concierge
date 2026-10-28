@@ -45,3 +45,9 @@ create index if not exists chunks_content_fts on chunks using gin (to_tsvector('
 create index if not exists chunks_document_id on chunks (document_id);
 create index if not exists chunks_content_hash on chunks (content_hash);
 create index if not exists chunks_metadata on chunks using gin (metadata);
+
+-- Supabase serves every table in "public" through its web API. Row-Level Security with no policies closes that:
+-- the API's roles (anon, authenticated) see nothing. The app connects as the tables' owner, which RLS doesn't
+-- restrict, so it keeps working. (Supabase Security Advisor: rls_disabled_in_public.)
+alter table documents enable row level security;
+alter table chunks enable row level security;

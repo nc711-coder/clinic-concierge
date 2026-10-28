@@ -88,3 +88,13 @@ create table if not exists tool_calls (
     ok            boolean not null,
     created_at    timestamptz not null default now()
 );
+
+-- Not readable through Supabase's web API (leads hold names and phone numbers): see 001_schema.sql.
+alter table providers enable row level security;
+alter table slots enable row level security;
+alter table leads enable row level security;
+alter table appointments enable row level security;
+alter table handoffs enable row level security;
+alter table sessions enable row level security;
+alter table messages enable row level security;
+alter table tool_calls enable row level security;
